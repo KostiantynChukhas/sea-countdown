@@ -1,0 +1,43 @@
+name: Sea countdown
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"   # каждые 30 минут (время UTC, GitHub может задерживать на несколько минут)
+  workflow_dispatch:         # кнопка «Run workflow» для ручного запуска
+
+permissions:
+  contents: write            # чтобы сохранить state.json с id сообщения
+
+concurrency:
+  group: sea-countdown
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install -r requirements.txt
+
+      - name: Update pinned message
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+          TARGET: "2026-11-17 07:00"
+          TZ_NAME: "Europe/Kyiv"
+        run: python bot.py
+
+      - name: Save state.json (first run only)
+        run: |
+          if [ -n "$(git status --porcelain state.json)" ]; then
+            git config user.name "sea-countdown-bot"
+            git config user.email "bot@users.noreply.github.com"
+            git add state.json
+            git commit -m "save message id"
+            git push
+          fi
