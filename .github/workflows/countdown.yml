@@ -2,19 +2,21 @@ name: Sea countdown
 
 on:
   schedule:
-    - cron: "*/30 * * * *"   # каждые 30 минут (время UTC, GitHub может задерживать на несколько минут)
-  workflow_dispatch:         # кнопка «Run workflow» для ручного запуска
+    - cron: "17 * * * *"      # страховка: раз в час проверяем, что цикл жив
+  workflow_dispatch:          # ручной запуск и само-перезапуск
 
 permissions:
-  contents: write            # чтобы сохранить state.json с id сообщения
+  contents: write             # сохранить state.json с id сообщения
+  actions: write              # запустить следующий цикл
 
 concurrency:
-  group: sea-countdown
+  group: sea-countdown        # одновременно работает только один цикл
   cancel-in-progress: false
 
 jobs:
   update:
     runs-on: ubuntu-latest
+    timeout-minutes: 358       # чуть меньше лимита GitHub в 6 часов
     steps:
       - uses: actions/checkout@v4
 
@@ -24,16 +26,20 @@ jobs:
 
       - run: pip install -r requirements.txt
 
-      - name: Update pinned message
+      - name: Countdown loop (~5.8 h)
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
           TARGET: "2026-11-17 07:00"
           TZ_NAME: "Europe/Kyiv"
-        run: python bot.py
+          INTERVAL: "10"          # секунд между обновлениями
+          MAX_RUN_SEC: "20700"    # 5 ч 45 мин, потом перезапуск
+        run: python bot.py --loop
 
       - name: Save state.json (first run only)
+        if: always()
         run: |
+          git pull --rebase --autostash || true
           if [ -n "$(git status --porcelain state.json)" ]; then
             git config user.name "sea-countdown-bot"
             git config user.email "bot@users.noreply.github.com"
@@ -41,3 +47,9 @@ jobs:
             git commit -m "save message id"
             git push
           fi
+
+      - name: Start next cycle
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run countdown.yml --ref main
