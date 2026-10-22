@@ -1,0 +1,23 @@
+name: Daily sea post
+
+on:
+  schedule:
+    - cron: "0 6 * * *"  # 08:00-09:00 за Києвом
+  workflow_dispatch:
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Send daily post
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+          TARGET: "2026-11-17 07:00"
+          TZ_NAME: "Europe/Kyiv"
+        run: python daily.py
