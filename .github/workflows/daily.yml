@@ -4,6 +4,10 @@ on:
   schedule:
     - cron: "0 6 * * *"  # 08:00-09:00 за Києвом
   workflow_dispatch:
+    inputs:
+      text:
+        description: "Свій текст (порожньо = звичайний пост)"
+        required: false
 
 jobs:
   post:
@@ -20,4 +24,5 @@ jobs:
           CHAT_ID: ${{ secrets.CHAT_ID }}
           TARGET: "2026-11-17 07:00"
           TZ_NAME: "Europe/Kyiv"
+          CUSTOM_TEXT: ${{ inputs.text }}
         run: python daily.py
