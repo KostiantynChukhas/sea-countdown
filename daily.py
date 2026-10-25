@@ -66,7 +66,7 @@ def build_text(now):
 
 
 if __name__ == "__main__":
-    text = build_text(datetime.now(TZ))
+    text = os.environ.get("CUSTOM_TEXT") or build_text(datetime.now(TZ))
     if text is None:
         print("Поїздка вже минула")
     else:
