@@ -1,8 +1,6 @@
 name: Daily sea post
 
 on:
-  schedule:
-    - cron: "0 8 * * *"  # ~10:00 за Києвом (GitHub іноді запізнюється)
   workflow_dispatch:
     inputs:
       text:
