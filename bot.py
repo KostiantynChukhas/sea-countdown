@@ -110,8 +110,37 @@ def load_message_id():
     return None
 
 
+def load_state():
+    if STATE_FILE.exists():
+        return json.loads(STATE_FILE.read_text())
+    return {}
+
+
+def save_state(**kw):
+    s = load_state()
+    s.update(kw)
+    STATE_FILE.write_text(json.dumps(s))
+
+
 def save_message_id(message_id: int):
-    STATE_FILE.write_text(json.dumps({"message_id": message_id}))
+    save_state(message_id=message_id)
+
+
+DAILY_HOUR = int(os.environ.get("DAILY_HOUR", "10"))  # щоденний пост о цій годині
+
+
+def maybe_daily():
+    """Один раз на день після DAILY_HOUR відправити пост зі слоганом."""
+    now = datetime.now(TZ)
+    today = now.date().isoformat()
+    if now.hour < DAILY_HOUR or load_state().get("last_daily") == today:
+        return
+    import daily
+    text = daily.build_text(now)
+    if text:
+        tg("sendMessage", chat_id=CHAT_ID, text=text, parse_mode="HTML")
+        print("Щоденний пост відправлено", flush=True)
+    save_state(last_daily=today)
 
 
 def update_once():
@@ -148,6 +177,10 @@ if __name__ == "__main__":
     if "--loop" in sys.argv:
         started = time.time()
         while True:
+            try:
+                maybe_daily()
+            except Exception as e:  # noqa: BLE001
+                print("Помилка daily:", e, flush=True)
             try:
                 update_once()
             except Exception as e:  # noqa: BLE001
